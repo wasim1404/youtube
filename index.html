@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube TV Player</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    h1 {
+      text-align: center;
+      padding: 10px;
+    }
+    .main {
+      display: flex;
+      flex: 1;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .video-section {
+      flex: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    iframe {
+      width: 100%;
+      height: 60vh;
+      max-width: 100%;
+      border: none;
+    }
+    .sidebar {
+      flex: 1;
+      padding-left: 20px;
+      overflow-y: auto;
+    }
+    .playlist {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .thumbnail {
+      width: 100%;
+      height: auto;
+      cursor: pointer;
+      border: 2px solid transparent;
+    }
+    .thumbnail.selected {
+      border-color: red;
+    }
+    .instructions, .fullscreen-button {
+      text-align: center;
+      margin: 10px;
+    }
+    .fullscreen-button {
+      padding: 8px 16px;
+      background-color: red;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>YouTube TV Player</h1>
+  <div class="main">
+    <div class="video-section">
+      <iframe id="ytPlayer" allowfullscreen></iframe>
+      <button class="fullscreen-button" onclick="toggleFullScreen()">Toggle Fullscreen</button>
+      <div class="instructions">
+        Use ↑ ↓ ← → to navigate, Enter to play, Space to pause, F for fullscreen
+      </div>
+    </div>
+    <div class="sidebar">
+      <div class="playlist" id="playlist"></div>
+    </div>
+  </div>
+
+  <script>
+    const videoLinks = [
+      "https://www.youtube.com/watch?v=CeFj6zJ0-EI",
+      "https://www.youtube.com/watch?v=pmwM5M3ivi0",
+      "https://www.youtube.com/watch?v=ZCB4gpW8heA"
+    ];
+    let currentIndex = 0;
+    const player = document.getElementById("ytPlayer");
+    const playlistDiv = document.getElementById("playlist");
+
+    function extractVideoId(url) {
+      const regExp = /(?:v=|\.be\/)([a-zA-Z0-9_-]{11})/;
+      const match = url.match(regExp);
+      return match ? match[1] : null;
+    }
+
+    function loadVideo(index) {
+      const videoId = extractVideoId(videoLinks[index]);
+      if (videoId) {
+        player.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&version=3&playerapiid=ytplayer&autoplay=1`;
+        currentIndex = index;
+        highlightSelected();
+      }
+    }
+
+    function sendCommand(command) {
+      player.contentWindow.postMessage(
+        JSON.stringify({ event: "command", func: command }),
+        "*"
+      );
+    }
+
+    function highlightSelected() {
+      document.querySelectorAll('.thumbnail').forEach((thumb, index) => {
+        thumb.classList.toggle('selected', index === currentIndex);
+      });
+    }
+
+    function renderPlaylist() {
+      playlistDiv.innerHTML = "";
+      videoLinks.forEach((link, index) => {
+        const videoId = extractVideoId(link);
+        const thumb = document.createElement("img");
+        thumb.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+        thumb.className = "thumbnail";
+        if (index === currentIndex) thumb.classList.add("selected");
+        thumb.addEventListener("click", () => loadVideo(index));
+        playlistDiv.appendChild(thumb);
+      });
+    }
+
+    function toggleFullScreen() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        player.requestFullscreen();
+      }
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown", "Enter", " ", "f"].includes(e.key)) {
+        e.preventDefault();
+      }
+      switch (e.key) {
+        case "ArrowRight":
+        case "ArrowDown":
+          currentIndex = (currentIndex + 1) % videoLinks.length;
+          loadVideo(currentIndex);
+          break;
+        case "ArrowLeft":
+        case "ArrowUp":
+          currentIndex = (currentIndex - 1 + videoLinks.length) % videoLinks.length;
+          loadVideo(currentIndex);
+          break;
+        case "Enter":
+          sendCommand("playVideo");
+          break;
+        case " ":
+          sendCommand("pauseVideo");
+          break;
+        case "f":
+          toggleFullScreen();
+          break;
+      }
+    });
+
+    renderPlaylist();
+    loadVideo(currentIndex);
+  </script>
+</body>
+</html>
