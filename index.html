@@ -47,20 +47,29 @@
       flex-direction: column;
       gap: 10px;
     }
+    .bottom-playlists {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 10px;
+      justify-content: center;
+    }
     .thumbnail {
-      width: 100%;
+      width: 120px;
       height: auto;
       cursor: pointer;
       border: 2px solid transparent;
+      outline: none;
     }
     .thumbnail.selected {
       border-color: red;
     }
-    .instructions, .fullscreen-button {
+    .instructions, .fullscreen-button, .add-video-form {
       text-align: center;
       margin: 10px;
     }
-    .fullscreen-button {
+    .fullscreen-button, .add-video-form button {
       padding: 8px 16px;
       background-color: red;
       color: white;
@@ -69,10 +78,24 @@
       font-size: 1rem;
       cursor: pointer;
     }
+    .add-video-form input {
+      padding: 8px;
+      width: 70%;
+      margin-right: 10px;
+      border-radius: 5px;
+      border: none;
+      font-size: 1rem;
+    }
   </style>
 </head>
 <body>
   <h1>YouTube TV Player</h1>
+
+  <div class="add-video-form">
+    <input type="text" id="newVideoUrl" placeholder="Paste YouTube video URL here" />
+    <button onclick="addVideoLink()">Add</button>
+  </div>
+
   <div class="main">
     <div class="video-section">
       <iframe id="ytPlayer" allowfullscreen></iframe>
@@ -86,8 +109,10 @@
     </div>
   </div>
 
+  <div class="bottom-playlists" id="bottomPlaylists"></div>
+
   <script>
-    const videoLinks = [
+    let videoLinks = [
       "https://www.youtube.com/watch?v=CeFj6zJ0-EI",
       "https://www.youtube.com/watch?v=pmwM5M3ivi0",
       "https://www.youtube.com/watch?v=ZCB4gpW8heA"
@@ -95,6 +120,7 @@
     let currentIndex = 0;
     const player = document.getElementById("ytPlayer");
     const playlistDiv = document.getElementById("playlist");
+    const bottomPlaylists = document.getElementById("bottomPlaylists");
 
     function extractVideoId(url) {
       const regExp = /(?:v=|\.be\/)([a-zA-Z0-9_-]{11})/;
@@ -108,6 +134,7 @@
         player.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&version=3&playerapiid=ytplayer&autoplay=1`;
         currentIndex = index;
         highlightSelected();
+        player.requestFullscreen();
       }
     }
 
@@ -131,9 +158,25 @@
         const thumb = document.createElement("img");
         thumb.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
         thumb.className = "thumbnail";
+        thumb.setAttribute("tabindex", 0);
         if (index === currentIndex) thumb.classList.add("selected");
         thumb.addEventListener("click", () => loadVideo(index));
+        thumb.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") loadVideo(index);
+        });
         playlistDiv.appendChild(thumb);
+      });
+    }
+
+    function renderBottomPlaylists() {
+      bottomPlaylists.innerHTML = "";
+      videoLinks.forEach((link, index) => {
+        const videoId = extractVideoId(link);
+        const thumb = document.createElement("img");
+        thumb.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+        thumb.className = "thumbnail";
+        thumb.addEventListener("click", () => loadVideo(index));
+        bottomPlaylists.appendChild(thumb);
       });
     }
 
@@ -142,6 +185,18 @@
         document.exitFullscreen();
       } else {
         player.requestFullscreen();
+      }
+    }
+
+    function addVideoLink() {
+      const newUrl = document.getElementById("newVideoUrl").value.trim();
+      if (newUrl && extractVideoId(newUrl)) {
+        videoLinks.push(newUrl);
+        renderPlaylist();
+        renderBottomPlaylists();
+        document.getElementById("newVideoUrl").value = "";
+      } else {
+        alert("Please enter a valid YouTube video URL.");
       }
     }
 
@@ -173,6 +228,7 @@
     });
 
     renderPlaylist();
+    renderBottomPlaylists();
     loadVideo(currentIndex);
   </script>
 </body>
